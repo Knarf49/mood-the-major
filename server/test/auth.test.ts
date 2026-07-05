@@ -1,7 +1,3 @@
-process.env.RESEND_API_KEY = "re_test_dummy";
-process.env.JWT_ACCESS_SECRET = "test-access-secret";
-process.env.JWT_REFRESH_SECRET = "test-refresh-secret";
-process.env.FRONTEND_URL = "http://localhost:5173";
 import request from "supertest";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -26,9 +22,9 @@ afterEach(async () => {
 });
 
 function uniqueUser() {
-  const id = `${Date.now()}_${Math.random()}`;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   return {
-    username: `user_${id}`,
+    username: `u_${id}`,
     email: `${id}@test.com`,
     password: "password123",
   };

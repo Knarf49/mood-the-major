@@ -41,18 +41,28 @@ export async function signup(req: Request, res: Response) {
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  const user = await User.create({ username, email, passwordHash, role: "user" });
+  const user = await User.create({
+    username,
+    email,
+    passwordHash,
+    role: "user",
+  });
 
   const code = generateResetCode(); // same 6-digit generator, reused for verification too
   user.verificationCodeHash = hashCode(code);
   user.verificationExpires = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
   await user.save();
 
-  await sendVerificationEmail(email, code);
+  try {
+    await sendVerificationEmail(email, code);
+  } catch {
+    // email is best-effort; user still created
+  }
 
   return res.status(201).json({
     user: toUserDTO(user),
-    message: "Signup successful. Please check your email to verify your account.",
+    message:
+      "Signup successful. Please check your email to verify your account.",
   });
 }
 
@@ -64,7 +74,7 @@ export async function verifyEmail(req: Request, res: Response) {
   const { email, code } = parsed.data;
 
   const user = await User.findOne({ email }).select(
-    "+verificationCodeHash +verificationExpires"
+    "+verificationCodeHash +verificationExpires",
   );
   if (!user || !user.verificationCodeHash || !user.verificationExpires) {
     return res.status(400).json({ error: "Invalid or expired code" });
@@ -104,7 +114,9 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!user.isVerified) {
-    return res.status(403).json({ error: "Please verify your email before logging in" });
+    return res
+      .status(403)
+      .json({ error: "Please verify your email before logging in" });
   }
 
   const dto = toUserDTO(user);
@@ -142,7 +154,7 @@ export async function refresh(req: Request, res: Response) {
 
 export function logout(req: Request, res: Response) {
   res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
-  return res.status(204).send();
+  return res.status(200).json({ message: "Logout successfully" });
 }
 
 export async function forgotPassword(req: Request, res: Response) {
@@ -154,7 +166,9 @@ export async function forgotPassword(req: Request, res: Response) {
 
   const user = await User.findOne({ email });
   if (!user) {
-    return res.status(200).json({ message: "If that email exists, a code has been sent." });
+    return res
+      .status(200)
+      .json({ message: "If that email exists, a code has been sent." });
   }
 
   const code = generateResetCode();
@@ -162,9 +176,15 @@ export async function forgotPassword(req: Request, res: Response) {
   user.resetPasswordExpires = new Date(Date.now() + RESET_CODE_TTL_MS);
   await user.save();
 
-  await sendResetCodeEmail(email, code);
+  try {
+    await sendResetCodeEmail(email, code);
+  } catch {
+    // email is best-effort; code still saved
+  }
 
-  return res.status(200).json({ message: "If that email exists, a code has been sent." });
+  return res
+    .status(200)
+    .json({ message: "If that email exists, a code has been sent." });
 }
 
 export async function resetPassword(req: Request, res: Response) {
@@ -175,7 +195,7 @@ export async function resetPassword(req: Request, res: Response) {
   const { email, code, newPassword } = parsed.data;
 
   const user = await User.findOne({ email }).select(
-    "+resetPasswordCodeHash +resetPasswordExpires"
+    "+resetPasswordCodeHash +resetPasswordExpires",
   );
   if (!user || !user.resetPasswordCodeHash || !user.resetPasswordExpires) {
     return res.status(400).json({ error: "Invalid or expired code" });
