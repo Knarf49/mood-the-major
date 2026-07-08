@@ -9,10 +9,12 @@ declare global {
   }
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+export function authRequired(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or malformed Authorization header" });
+    return res
+      .status(401)
+      .json({ error: "Missing or malformed Authorization header" });
   }
 
   const token = header.slice(7);
@@ -24,7 +26,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-// Optional: role guard, chain after authMiddleware
+// Optional: role guard, chain after authRequired
 export function requireRole(...roles: Array<"user" | "admin">) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {

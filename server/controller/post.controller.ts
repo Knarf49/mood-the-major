@@ -1,9 +1,16 @@
 import { z } from "zod";
 import { Request, Response } from "express";
 import { Post } from "../models/post";
-import { toPostDTO, toPostDTOList } from "../utils/dto";
-import { getPagination, buildPaginationMeta, handleMongoError } from "../utils/mongoose";
-import { createPostSchema, updatePostSchema } from "../validator/post.validator";
+import { PostDTO, PostDTOList } from "../utils/dto";
+import {
+  getPagination,
+  buildPaginationMeta,
+  handleMongoError,
+} from "../utils/mongoose";
+import {
+  createPostSchema,
+  updatePostSchema,
+} from "../validator/post.validator";
 
 export async function listPosts(req: Request, res: Response) {
   try {
@@ -19,7 +26,7 @@ export async function listPosts(req: Request, res: Response) {
     ]);
 
     return res.json({
-      posts: toPostDTOList(posts),
+      posts: PostDTOList(posts),
       meta: buildPaginationMeta(total, { page, limit, skip }),
     });
   } catch (err) {
@@ -39,7 +46,7 @@ export async function createPost(req: Request, res: Response) {
 
   try {
     const post = await Post.create({ ...parsed.data, ownerId });
-    return res.status(201).json({ post: toPostDTO(post) });
+    return res.status(201).json({ post: PostDTO(post) });
   } catch (err) {
     return handleMongoError(err, res);
   }
@@ -60,13 +67,15 @@ export async function updatePost(req: Request, res: Response) {
     const isOwner = post.ownerId.toString() === req.user!.id;
     const isAdmin = req.user!.role === "admin";
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({ error: "You do not have permission to edit this post" });
+      return res
+        .status(403)
+        .json({ error: "You do not have permission to edit this post" });
     }
 
     Object.assign(post, parsed.data);
     await post.save();
 
-    return res.json({ post: toPostDTO(post) });
+    return res.json({ post: PostDTO(post) });
   } catch (err) {
     return handleMongoError(err, res);
   }
@@ -81,8 +90,10 @@ export async function deletePost(req: Request, res: Response) {
 
     const isOwner = post.ownerId.toString() === req.user!.id;
     const isAdmin = req.user!.role === "admin";
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ error: "You do not have permission to delete this post" });
+    if (!isOwner || !isAdmin) {
+      return res
+        .status(403)
+        .json({ error: "You do not have permission to delete this post" });
     }
 
     await post.deleteOne();

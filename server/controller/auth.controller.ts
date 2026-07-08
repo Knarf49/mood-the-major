@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { User } from "../models/user";
-import { toUserDTO } from "../utils/dto";
+import { UserDTO } from "../utils/dto";
 import {
   signAccessToken,
   signRefreshToken,
@@ -60,7 +60,7 @@ export async function signup(req: Request, res: Response) {
   }
 
   return res.status(201).json({
-    user: toUserDTO(user),
+    user: UserDTO(user),
     message:
       "Signup successful. Please check your email to verify your account.",
   });
@@ -119,7 +119,7 @@ export async function login(req: Request, res: Response) {
       .json({ error: "Please verify your email before logging in" });
   }
 
-  const dto = toUserDTO(user);
+  const dto = UserDTO(user);
   const accessToken = signAccessToken(dto);
   const refreshToken = signRefreshToken(dto);
 
@@ -140,7 +140,7 @@ export async function refresh(req: Request, res: Response) {
       return res.status(401).json({ error: "User no longer exists" });
     }
 
-    const payload = toUserDTO(user);
+    const payload = UserDTO(user);
     const accessToken = signAccessToken(payload);
     const newRefreshToken = signRefreshToken(payload);
 

@@ -1,6 +1,21 @@
 {
+  "private": true,
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w server && npm run build -w client",
+    "test": "npm test -w server",
+    "test:client": "npm run test -w client"
+  },
   "dependencies": {
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6"
+    "cors": "^2.8.6",
+    "socket.io": "^4.8.3",
+    "zod": "^4.4.3"
   }
 }

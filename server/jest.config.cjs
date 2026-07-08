@@ -6,4 +6,7 @@ module.exports = {
   setupFiles: ["./test/setup.ts"],
   clearMocks: true,
   testTimeout: 30000,
+  moduleNameMapper: {
+    "^(\\.\\./)*shared/(.*)\\.js$": "<rootDir>/../shared/$2.ts",
+  },
 };

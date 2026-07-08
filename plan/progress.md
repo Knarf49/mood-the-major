@@ -1,9 +1,9 @@
 # Whiteboard Project — To-Do List
 
 ## Current Progress
-- [ ] ทำให้ login redirect ไปที่ verify email page
-- [ ] ทำ forgot password flow ใน frontend
-- [ ] ทำให้ verify-email, forgot-password ใช้ได้ใน frontend 
+
+- [ ] Setup Zustand
+- [ ] implement Zustand login Session persist
 
 ## 1. Setup
 

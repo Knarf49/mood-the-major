@@ -1,8 +1,8 @@
 services:
   mood_server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: mood-the-major-backend
     ports:
       - "8000:8000"

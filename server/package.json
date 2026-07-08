@@ -6,7 +6,7 @@
     "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --config jest.config.cjs",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/src/server.js"
+    "start": "node ../dist/server/src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +23,7 @@
     "mongoose": "^9.7.3",
     "nodemailer": "^9.0.3",
     "resend": "^6.17.1",
+    "socket.io": "^4.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

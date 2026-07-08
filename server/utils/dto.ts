@@ -1,44 +1,37 @@
 import { IUser } from "../models/user";
 import { IPost } from "../models/post";
+import {
+  userDTOSchema,
+  postDTOSchema,
+  type UserDTO,
+  type PostDTO,
+} from "../../shared/schemas.js";
 
 // ---------- User ----------
-export interface UserDTO {
-  id: string;
-  username: string;
-  role: "user" | "admin";
-}
-
-export function toUserDTO(user: IUser): UserDTO {
-  return {
+// schema.parse() both builds AND validates the DTO in one step —
+// if a field is ever wrong/missing, this throws immediately instead of
+// silently shipping a malformed response to the client
+export function UserDTO(user: IUser): UserDTO {
+  return userDTOSchema.parse({
     id: user.id,
     username: user.username,
     role: user.role,
-  };
+  });
 }
 
 // ---------- Post ----------
-export interface PostDTO {
-  id: string;
-  content: string;
-  major: string;
-  moodType: string;
-  ownerId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export function toPostDTO(post: IPost): PostDTO {
-  return {
+export function PostDTO(post: IPost): PostDTO {
+  return postDTOSchema.parse({
     id: post.id,
     content: post.content,
     major: post.major,
     moodType: post.moodType,
     ownerId: post.ownerId.toString(),
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
-  };
+    createdAt: post.createdAt.toISOString(),
+    updatedAt: post.updatedAt.toISOString(),
+  });
 }
 
-export function toPostDTOList(posts: IPost[]): PostDTO[] {
-  return posts.map(toPostDTO);
+export function PostDTOList(posts: IPost[]): PostDTO[] {
+  return posts.map(PostDTO);
 }
