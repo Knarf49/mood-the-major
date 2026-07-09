@@ -3,10 +3,9 @@ import { Link } from "react-router";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
+import { useAuth } from "../../utils/authStore";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-if (!API_URL) alert("backend URL not found!");
 
 // ---------- Types ----------
 export interface FormState {
@@ -48,7 +47,7 @@ export async function loginAction(
       return { error: extractError(data.error) || "Login failed", success: null, email: null };
     }
 
-    // TODO: store data.accessToken + data.user in your Zustand auth store here
+    useAuth.getState().setAuth(data.user, data.accessToken);
     return { error: null, success: "Logged in successfully", email: null };
   } catch {
     return {

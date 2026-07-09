@@ -3,6 +3,7 @@ import app from "./app";
 import { connectDB, gracefulShutdown } from "../utils/db";
 import http from "http";
 import { Server } from "socket.io";
+import { attachLobbyNamespace } from "../utils/lobby";
 
 const PORT = process.env.PORT || 8000;
 
@@ -18,6 +19,7 @@ async function startServer() {
   });
 
   const whiteboard = io.of("/whiteboard");
+  attachLobbyNamespace(io);
 
   whiteboard.on("connection", (socket) => {
     console.log("connect to whiteboard: ", socket.id);
