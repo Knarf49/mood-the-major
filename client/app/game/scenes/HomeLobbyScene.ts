@@ -1,4 +1,11 @@
 import Phaser from "phaser";
+import {
+  CHARACTER_FRAME_URLS,
+  TILE_TEXTURE_URLS,
+  getDirectionIdleFrame,
+  getDirectionWalkFrames,
+  type TileTextureKey,
+} from "../assets";
 import { createLobbySocket, type LobbySocket } from "../socket";
 import type { GameSession, LobbyDirection, LobbyMovePayload, LobbyPlayer } from "../types";
 
@@ -11,16 +18,25 @@ interface RemotePlayerRender {
 const WORLD_WIDTH = 2048;
 const WORLD_HEIGHT = 2048;
 const TILE_SIZE = 32;
+const PLAYER_DISPLAY_SIZE = 64;
+const PLAYER_LABEL_OFFSET = 48;
 const PLAYER_SPEED = 180;
 const SEND_INTERVAL_MS = 80;
 const DIRECTIONS: LobbyDirection[] = ["down", "left", "right", "up"];
 
-const DIRECTION_ROWS: Record<LobbyDirection, number> = {
-  down: 0,
-  left: 1,
-  right: 2,
-  up: 3,
-};
+const TILE_ENTRIES = Object.entries(TILE_TEXTURE_URLS) as [TileTextureKey, string][];
+
+function idleTextureKey(direction: LobbyDirection) {
+  return `player-${direction}-idle`;
+}
+
+function walkTextureKey(direction: LobbyDirection, index: number) {
+  return `player-${direction}-walk-${index}`;
+}
+
+function tileTextureKey(key: TileTextureKey) {
+  return `tile-${key}`;
+}
 
 export class HomeLobbyScene extends Phaser.Scene {
   private readonly session: GameSession;
@@ -40,21 +56,27 @@ export class HomeLobbyScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.spritesheet("player", "/assets/game/player_32.png", {
-      frameWidth: TILE_SIZE,
-      frameHeight: TILE_SIZE,
-    });
+    for (const direction of DIRECTIONS) {
+      this.load.image(idleTextureKey(direction), getDirectionIdleFrame(direction));
+      CHARACTER_FRAME_URLS[direction].walk.forEach((url, index) => {
+        this.load.image(walkTextureKey(direction, index), url);
+      });
+    }
+
+    for (const [key, url] of TILE_ENTRIES) {
+      this.load.image(tileTextureKey(key), url);
+    }
   }
 
   create() {
-    this.ensurePlayerTexture();
     this.createAnimations();
     this.drawWorld();
 
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-    this.localPlayer = this.physics.add.sprite(512, 512, "player", 0);
+    this.localPlayer = this.physics.add.sprite(512, 512, idleTextureKey("down"));
+    this.localPlayer.setDisplaySize(PLAYER_DISPLAY_SIZE, PLAYER_DISPLAY_SIZE);
     this.localPlayer.setCollideWorldBounds(true);
     this.localPlayer.setDepth(10);
 
@@ -92,72 +114,66 @@ export class HomeLobbyScene extends Phaser.Scene {
   }
 
   private drawWorld() {
-    const graphics = this.add.graphics();
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, tileTextureKey("grass"))
+      .setDepth(0);
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 192, WORLD_HEIGHT, tileTextureKey("asphalt"))
+      .setDepth(1);
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, WORLD_WIDTH, 192, tileTextureKey("asphalt"))
+      .setDepth(1);
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 384, 384, tileTextureKey("concrete"))
+      .setDepth(2);
 
-    for (let y = 0; y < WORLD_HEIGHT; y += TILE_SIZE) {
-      for (let x = 0; x < WORLD_WIDTH; x += TILE_SIZE) {
-        const road = Math.abs(x - WORLD_WIDTH / 2) < 96 || Math.abs(y - WORLD_HEIGHT / 2) < 96;
-        const plaza = Math.abs(x - WORLD_WIDTH / 2) < 192 && Math.abs(y - WORLD_HEIGHT / 2) < 192;
-        const color = plaza ? 0x475569 : road ? 0x334155 : (x + y) / TILE_SIZE % 2 === 0 ? 0x14532d : 0x166534;
-        graphics.fillStyle(color, 1);
-        graphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-      }
-    }
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, TILE_SIZE, WORLD_HEIGHT, tileTextureKey("roadLine"))
+      .setDepth(3);
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2 - 160, 192, 64, tileTextureKey("crosswalk"))
+      .setDepth(4);
+    this.add
+      .tileSprite(WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 160, 192, 64, tileTextureKey("crosswalk"))
+      .setDepth(4)
+      .setFlipY(true);
 
-    graphics.lineStyle(1, 0x0f172a, 0.35);
-    for (let x = 0; x <= WORLD_WIDTH; x += TILE_SIZE) {
-      graphics.lineBetween(x, 0, x, WORLD_HEIGHT);
-    }
-    for (let y = 0; y <= WORLD_HEIGHT; y += TILE_SIZE) {
-      graphics.lineBetween(0, y, WORLD_WIDTH, y);
-    }
-
-    graphics.setDepth(0);
+    this.addDecorations();
   }
 
-  private ensurePlayerTexture() {
-    if (this.textures.exists("player")) return;
+  private addDecorations() {
+    const centerX = WORLD_WIDTH / 2;
+    const centerY = WORLD_HEIGHT / 2;
+    const objects: { key: TileTextureKey; x: number; y: number }[] = [
+      { key: "tree", x: centerX - 280, y: centerY - 280 },
+      { key: "tree", x: centerX + 280, y: centerY - 280 },
+      { key: "tree", x: centerX - 280, y: centerY + 280 },
+      { key: "tree", x: centerX + 280, y: centerY + 280 },
+      { key: "bench", x: centerX - 144, y: centerY - 224 },
+      { key: "bench", x: centerX + 144, y: centerY + 224 },
+      { key: "lamp", x: centerX - 224, y: centerY - 96 },
+      { key: "lamp", x: centerX + 224, y: centerY + 96 },
+      { key: "trashBin", x: centerX - 224, y: centerY + 96 },
+      { key: "bush", x: centerX + 224, y: centerY - 96 },
+      { key: "planter", x: centerX - 96, y: centerY + 224 },
+      { key: "signpost", x: centerX + 96, y: centerY - 224 },
+    ];
 
-    const texture = this.textures.createCanvas("player", TILE_SIZE * 4, TILE_SIZE * 4);
-    if (!texture) {
-      throw new Error("Could not create fallback player texture");
+    for (const object of objects) {
+      this.add.image(object.x, object.y, tileTextureKey(object.key)).setDepth(5);
     }
-
-    const context = texture.getContext();
-
-    context.imageSmoothingEnabled = false;
-    context.clearRect(0, 0, TILE_SIZE * 4, TILE_SIZE * 4);
-
-    for (let row = 0; row < 4; row++) {
-      for (let column = 0; column < 4; column++) {
-        const x = column * TILE_SIZE;
-        const y = row * TILE_SIZE;
-        context.fillStyle = column === 0 ? "#22d3ee" : "#67e8f9";
-        context.fillRect(x + 10, y + 8, 12, 18);
-        context.fillStyle = "#0f172a";
-        context.fillRect(x + 12, y + 11, 3, 3);
-        context.fillRect(x + 17, y + 11, 3, 3);
-        context.fillStyle = "#f8fafc";
-        context.fillRect(x + 13, y + 26, 3, 4);
-        context.fillRect(x + 16, y + 26, 3, 4);
-      }
-    }
-
-    texture.refresh();
   }
 
   private createAnimations() {
     for (const direction of DIRECTIONS) {
-      const row = DIRECTION_ROWS[direction];
       const key = `walk-${direction}`;
       if (this.anims.exists(key)) continue;
 
       this.anims.create({
         key,
-        frames: this.anims.generateFrameNumbers("player", {
-          start: row * 4 + 1,
-          end: row * 4 + 3,
-        }),
+        frames: getDirectionWalkFrames(direction).map((_url, index) => ({
+          key: walkTextureKey(direction, index),
+        })),
         frameRate: 8,
         repeat: -1,
       });
@@ -199,13 +215,13 @@ export class HomeLobbyScene extends Phaser.Scene {
       this.localPlayer.anims.play(`walk-${this.direction}`, true);
     } else {
       this.localPlayer.anims.stop();
-      this.localPlayer.setFrame(DIRECTION_ROWS[this.direction] * 4);
+      this.localPlayer.setTexture(idleTextureKey(this.direction));
     }
   }
 
   private updateLocalLabel() {
     if (!this.localPlayer || !this.localLabel) return;
-    this.localLabel.setPosition(this.localPlayer.x, this.localPlayer.y - 32);
+    this.localLabel.setPosition(this.localPlayer.x, this.localPlayer.y - PLAYER_LABEL_OFFSET);
   }
 
   private connectLobby() {
@@ -254,12 +270,13 @@ export class HomeLobbyScene extends Phaser.Scene {
       return;
     }
 
-    const sprite = this.physics.add.sprite(player.x, player.y, "player", DIRECTION_ROWS[player.direction] * 4);
+    const sprite = this.physics.add.sprite(player.x, player.y, idleTextureKey(player.direction));
+    sprite.setDisplaySize(PLAYER_DISPLAY_SIZE, PLAYER_DISPLAY_SIZE);
     sprite.setDepth(9);
     sprite.setTint(0xb4fffb);
 
     const label = this.add
-      .text(player.x, player.y - 32, player.username, {
+      .text(player.x, player.y - PLAYER_LABEL_OFFSET, player.username, {
         color: "#bae6fd",
         fontFamily: "monospace",
         fontSize: "12px",
@@ -287,13 +304,13 @@ export class HomeLobbyScene extends Phaser.Scene {
     for (const remote of this.remotePlayers.values()) {
       remote.sprite.x = Phaser.Math.Linear(remote.sprite.x, remote.target.x, lerp);
       remote.sprite.y = Phaser.Math.Linear(remote.sprite.y, remote.target.y, lerp);
-      remote.label.setPosition(remote.sprite.x, remote.sprite.y - 32);
+      remote.label.setPosition(remote.sprite.x, remote.sprite.y - PLAYER_LABEL_OFFSET);
 
       if (remote.target.moving) {
         remote.sprite.anims.play(`walk-${remote.target.direction}`, true);
       } else {
         remote.sprite.anims.stop();
-        remote.sprite.setFrame(DIRECTION_ROWS[remote.target.direction] * 4);
+        remote.sprite.setTexture(idleTextureKey(remote.target.direction));
       }
     }
   }
